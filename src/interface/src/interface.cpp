@@ -66,8 +66,8 @@ int main(int argc, char** argv){
 	geometry_msgs::PoseWithCovarianceStamped initial_pose;
 	initial_pose.header.stamp=ros::Time::now();
 	initial_pose.header.frame_id="/map";
-	initial_pose.pose.pose.position.x=;
-	initial_pose.pose.pose.position.y=;
+	initial_pose.pose.pose.position.x=16.006;
+	initial_pose.pose.pose.position.y=41.333;
 	initial_pose.pose.pose.position.z=0;
 	initial_pose.pose.pose.orientation.x=0;
 	initial_pose.pose.pose.orientation.y=0;
