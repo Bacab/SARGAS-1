@@ -8,6 +8,7 @@
 #include <move_base_msgs/MoveBaseAction.h>
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include <actionlib/client/simple_action_client.h>
+#include "iostream"
 
 using namespace std;
 
@@ -17,14 +18,23 @@ double * y_coord;
 string current_line;
 int i,j,k;
 char choix;
-int taille_index;
+int nb_dest,nb_x,nb_y;
 const bool in=true;
 const bool out=false;
-GPIO enter(67,in);
-GPIO avance(68,in);
-GPIO preced(68,in);
+//GPIO enter(67,in);
+//GPIO avance(68,in);
+//GPIO preced(68,in);
 
 typedef actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction> MoveBaseClient;
+
+double stod(std::string Text)
+{
+ double result=0.0;
+ std::stringstream convert(Text);
+ if (!(convert >> result))
+	result=0.0;
+ return(result);
+}
 
 int stoi(std::string Text)
 {
@@ -40,8 +50,8 @@ string Get_data(string complete)
 	int debut,fin,taille;
 	char * data;
 	string res;
-	debut=complete.find("<");
-	fin=complete.find(">");
+	debut=complete.find(">");
+	fin=complete.find("<",2);
 	taille=fin-debut-1;
 	data=new char[taille+1];
 	if (taille<=0)
@@ -60,7 +70,7 @@ int main(int argc, char** argv){
 	ros::Publisher init_pub = n.advertise<geometry_msgs::PoseWithCovarianceStamped>("initial_pose",50);
 	MoveBaseClient ac("move_base", true);
  	while(!ac.waitForServer(ros::Duration(5.0))){
-    		ROS_INFO("Waiting for the move_base action server to come up");
+    		cout << "Waiting for the move_base action server to come up" << endl;
   	}
 	move_base_msgs::MoveBaseGoal goal;
 	geometry_msgs::PoseWithCovarianceStamped initial_pose;
@@ -73,68 +83,80 @@ int main(int argc, char** argv){
 	initial_pose.pose.pose.orientation.y=0;
 	initial_pose.pose.pose.orientation.z=0;
 	initial_pose.pose.pose.orientation.w=1;
-	ifstream index_file ("C:/Users/Florian/Documents/Florian/PC/PFE/index.xml");
+	ifstream index_file ("/home/florian/index.xml");
 	if (!index_file.is_open())
 	{
-		ROS_INFO("Critical error, could not find index file. Please refer to a specialist for help.");
+		cout << "Critical error, could not find index file. Please refer to a specialist for help." << endl;
 		return (-1);
 	}
-	taille_index=0;
+	nb_dest=0;
+	nb_x=0;
+	nb_y=0;
 	while (getline(index_file,current_line))
 	{
-		if(!current_line.compare("<nom_dest>"))
-			taille_index=taille_index+1;
+		if(current_line.find("<nom_dest>")!=-1)
+			nb_dest+=1;
+		else if(current_line.find("<x_coord>")!=-1)
+			nb_x+=1;
+		else if(current_line.find("<y_coord>")!=-1)
+			nb_y+=1;
 	}
-	file_list=new string [taille_index];
-	x_coord=new double [taille_index];
-	y_coord=new double [taille_index];
+	if (nb_dest==0)
+		return(-1);
+	file_list=new string [nb_dest];
+	x_coord=new double [nb_x];
+	y_coord=new double [nb_y];
 	index_file.clear();
 	index_file.seekg(0, ios::beg);
-	ROS_INFO("Welcome to S.A.R.G.A.s !");
-	system(("cvlc"+file_list[taille_index-3]).c_str());
+	cout << "Welcome to S.A.R.G.A.s !" << endl;
+	i=0;
+	j=0;
+	k=0;
 	while (getline(index_file,current_line))
 	{
-		if(!current_line.compare("<nom_dest>"))
+		if(current_line.find("<nom_dest>")!=-1)
 		{
-			getline(index_file,current_line);
 			file_list[i]=Get_data(current_line);
 			i+=1;
-			getline(index_file,current_line);
-			x_coord[i]=stoi(Get_data(current_line));
-			i+=1;
-			getline(index_file,current_line);
-			y_coord[i]=stoi(Get_data(current_line));
-			i+=1;
 		}
+		else if(current_line.find("<x_coord>")!=-1)
+		{
+			x_coord[j]=stod(Get_data(current_line));
+			j+=1;
+		}
+		else if(current_line.find("<y_coord>")!=-1)
+		{
+			y_coord[k]=stod(Get_data(current_line));
+			k+=1;
+		}
+		cout << current_line << endl;
 	}
+	cout << ("cvlc"+file_list[nb_dest-3]).c_str() << endl;
 	while(n.ok()){
 		i=0;
-		while(!enter.getValue())
+		cin >> choix;
+		cout << "cvlc"+file_list[i] << endl;//play destination choisie
+		while(choix!='e')
 		{
-			if (avance.getValue())
+			cin >> choix;			
+			if (choix=='d')
 			{
-				while(avance.getValue())
-				{}
-				i=i+1%(taille_index-4);
-			system(("cvlc"+file_list[i]).c_str());//play destination choisie
+				i=(i+1)%(nb_dest-3);
+				cout << "cvlc"+file_list[i] << endl;//play destination choisie
 			}
-			else if(preced.getValue())
+			else if(choix=='q')
 			{
-				while(preced.getValue())
-				{}
-				if(i=0)
+				if(i==0)
 				{			
-					i=taille_index-4;
+					i=nb_dest-4;
 				}
 				else
 				{
 					i=i-1;
 				}
-			system(("cvlc"+file_list[i]).c_str());//play destination choisie
+			cout << "cvlc"+file_list[i] << endl;//play destination choisie
 			}
 		}
-		while(enter.getValue())
-		{}
 		goal.target_pose.header.frame_id = "base_link";
 	  	goal.target_pose.header.stamp = ros::Time::now();
 
@@ -146,8 +168,8 @@ int main(int argc, char** argv){
   		ac.waitForResult();
 
   		while(ac.getState() != actionlib::SimpleClientGoalState::SUCCEEDED)
-    			ROS_INFO("En route pour le but");
-		system(("cvlc"+file_list[taille_index-2]).c_str());
+    			cout << "En route pour le but" << endl;
+		cout << "cvlc"+file_list[nb_dest-2] << endl;
 	}
 	delete [] file_list;
 	return 0;

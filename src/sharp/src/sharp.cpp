@@ -7,21 +7,12 @@
 #include <cmath>
 #include <string>
 
-int stoi(std::string Text)
-{
- int result=0;
- std::stringstream convert(Text);
- if (!(convert >> result))
-	result=0;
- return(result);
-}
-
 int main(int argc, char **argv)
 {
   try {
-    ADC adc_right(4); 
+    /*ADC adc_right(4); 
     ADC adc_middle(5); 
-    ADC adc_left(6); 
+    ADC adc_left(6); */
 
     ros::init(argc, argv, "sharp");
 
@@ -31,7 +22,7 @@ int main(int argc, char **argv)
     const double distance_max=0.108;
     const double pi=4*atan(1);
     double offset[3]={0.106,0.093,0.108};
-    unsigned int raw[3];
+    double raw[3];
     float lookup[3][1024];
     
     ros::Publisher sharp_pub= n.advertise<sensor_msgs::LaserScan>("scan", 50);
@@ -57,22 +48,24 @@ int main(int argc, char **argv)
  
     while (ros::ok())
     {
-      raw[0] = adc_right.getValue();
-      raw[1] = adc_middle.getValue();
-      raw[2] = adc_left.getValue();
+      for (int k=0;k<10;k++)
+      {
+       raw[0] += 90;//adc_right.getValue()/4.0;
+       raw[1] += 90;//adc_middle.getValue()/4.0;
+       raw[2] += 90;//adc_left.getValue()/4.0; 
+      }
+      raw[0]=raw[0]/10.0;
+      raw[1]=raw[1]/10.0;
+      raw[2]=raw[2]/10.0;
       ROS_DEBUG("ADC values read: %u %u %u", raw[0], raw[1], raw[2]);
       sharp.header.stamp = ros::Time::now();
       for(int i=0;i<3;i++)
       {
-  	if(raw[i]>1024)
-  	{
-            raw[i]=1024;
-          }
-        else if(raw[i]<85)//a determiner
+ 	if(raw[i]<85)//a determiner
   	{
   	  raw[i]=1;
   	}
-  	 
+      }
       sharp.ranges[i]=lookup[i][raw[i]-1]+offset[i];
       }
       sharp_pub.publish(sharp);
